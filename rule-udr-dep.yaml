@@ -7,6 +7,17 @@ metadata:
     app: mdo-rule-udr
   name: mdo-rule-udr
 spec: 
+  triggers:
+    - type: ConfigChange
+    - type: ImageChange
+      imageChangeParams:
+        automatic: true
+        containerNames:
+          - mdo-analytics
+        from:
+          kind: ImageStreamTag
+          namespace: dev
+          name: 'mdo-analytics:development'
   replicas: 1
   selector: 
     matchLabels: 
