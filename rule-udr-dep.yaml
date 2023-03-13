@@ -16,15 +16,6 @@ spec:
     activeDeadlineSeconds: 21600
   triggers:
     - type: ConfigChange
-    - type: ImageChange
-      imageChangeParams:
-        automatic: true
-        containerNames:
-          - mdo-rule-udr
-        from:
-          kind: ImageStreamTag
-          namespace: dev
-          name: 'mdo-rule-udr:development'
   replicas: 1
   revisionHistoryLimit: 10
   test: false
