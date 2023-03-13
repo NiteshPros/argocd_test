@@ -36,27 +36,8 @@ spec:
       labels:
         app: mdo-rule-udr
     spec: 
-      containers:
-          readinessProbe:
-            httpGet:
-              path: /udr/actuator/health/readiness
-              port: 8080
-              scheme: HTTP
-            initialDelaySeconds: 30
-            timeoutSeconds: 5
-            periodSeconds: 90
-            successThreshold: 2
-            failureThreshold: 2
-          livenessProbe:
-            httpGet:
-              path: /udr/actuator/health/liveness
-              port: 8080
-              scheme: HTTP
-            initialDelaySeconds: 30
-            timeoutSeconds: 5
-            periodSeconds: 90
-            successThreshold: 1
-            failureThreshold: 2
+      containers: 
+        - 
           env:
             - name: spring.data.elasticsearch.client.reactive.endpoints
               valueFrom:
@@ -183,6 +164,26 @@ spec:
               memory: 2Gi
             requests:
               memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /udr/actuator/health/readiness
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            periodSeconds: 90
+            successThreshold: 2
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /udr/actuator/health/liveness
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            periodSeconds: 90
+            successThreshold: 1
+            failureThreshold: 2
           startupProbe:
             httpGet:
               path: /udr/actuator/health/alb
