@@ -1,32 +1,39 @@
 --- 
-apiVersion: apps/v1
-kind: Deployment
-metadata: 
-  creationTimestamp: ~
-  labels: 
-    app: mdo-rule-udr
+kind: DeploymentConfig
+apiVersion: apps.openshift.io/v1
+metadata:
   name: mdo-rule-udr
-spec: 
+spec:
+  strategy:
+    type: Rolling
+    rollingParams:
+      updatePeriodSeconds: 1
+      intervalSeconds: 1
+      timeoutSeconds: 600
+      maxUnavailable: 25%
+      maxSurge: 25%
+    resources: {}
+    activeDeadlineSeconds: 21600
   triggers:
     - type: ConfigChange
     - type: ImageChange
       imageChangeParams:
         automatic: true
         containerNames:
-          - mdo-analytics
+          - mdo-rule-udr
         from:
           kind: ImageStreamTag
           namespace: dev
-          name: 'mdo-analytics:development'
+          name: 'mdo-rule-udr:development'
   replicas: 1
-  selector: 
-    matchLabels: 
-      app: mdo-rule-udr
-  strategy: {}
-  template: 
-    metadata: 
-      creationTimestamp: ~
-      labels: 
+  revisionHistoryLimit: 10
+  test: false
+  selector:
+    app: mdo-rule-udr
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
         app: mdo-rule-udr
     spec: 
       containers: 
@@ -35,87 +42,112 @@ spec:
             - name: spring.data.elasticsearch.client.reactive.endpoints
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: SPRING_DATA_ELASTICSEARCH_CLIENT_REACTIVE_ENDPOINTS
             - name: spring.elasticsearch.rest.uris
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: SPRING_ELASTICSEARCH_REST_URIS
             - name: mdo.config.jwt_rsk
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: MDO_CONFIG_JWT_RSK
             - name: spring.rabbitmq.username
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: SPRING_RABBITMQ_USER
             - name: spring.rabbitmq.password
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: SPRING_RABBITMQ_PASSWD
             - name: spring.rabbitmq.addresses
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: SPRING_RABBITMQ_ADDRESS
             - name: spring.rabbitmq.host
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: SPRING_RABBITMQ_HOST
             - name: spring.rabbitmq.port
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: SPRING_RABBITMQ_PORT
             - name: server.canonical.url
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: SERVER_CANONICAL_URL_IN_UDR
             - name: server.name
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: SERVER_NAME
             - name: management.endpoint.health.show-details
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: MANAGEMENT_ENDPOINT_HEALTH_SHOW-DETAILS
             - name: management.health.defaults.enabled
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: MANAGEMENT_HEALTH_DEFAULTS_ENABLED
+            - name: management.health.default-enabled
+              valueFrom:
+                secretKeyRef:
+                  name: ocp-dev-secrets
+                  key: MANAGEMENT_HEALTH_DEFAULTS_ENABLED
+            - name: management.endpoint.health.group.alb.include
+              valueFrom:
+                secretKeyRef:
+                  name: ocp-dev-secrets
+                  key: MANAGEMENT_ENDPOINT_HEALTH_GROUP_ALB_INCLUDE
+            - name: management.endpoint.health.group.alb.show-components
+              valueFrom:
+                secretKeyRef:
+                  name: ocp-dev-secrets
+                  key: MANAGEMENT_ENDPOINT_HEALTH_GROUP_ALB_SHOW-COMPONENTS
+            - name: management.endpoint.health.group.alb.show-details
+              valueFrom:
+                secretKeyRef:
+                  name: ocp-dev-secrets
+                  key: MANAGEMENT_ENDPOINT_HEALTH_GROUP_ALB_SHOW-DETAILS
+            - name: management.health.group.alb.defaults.enabled
+              valueFrom:
+                secretKeyRef:
+                  name: ocp-dev-secrets
+                  key: MANAGEMENT_HEALTH_GROUP_ALB_DEFAULTS_ENABLED
             - name: elastic.link
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: ELASTIC_LINK
             - name: elastic.username
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: ELASTIC_USERNAME
             - name: elastic.password
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: ELASTIC_PASSWORD
             - name: NEW_RELIC_APP_NAME
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: SERVER_CANONICAL_URL_IN_UDR
             - name: NEW_RELIC_LICENSE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: singapore-secrets
+                  name: ocp-dev-secrets
                   key: NEWRELIC_LICENSE_KEY
             - name: elastic.protocol
               value: https
@@ -123,14 +155,52 @@ spec:
               value: '9200'
             - name: server.port
               value: '8080'
+            - name: server.grpc.port
+              value: '10000'
           image: "docker.prospecta.com/prospecta/mdo-rule-udr:development"
           name: mdo-rule-udr
-          ports:
-            - name: spring-port
-              containerPort: 8080
-              protocol: TCP
-          resources: {}
-      securityContext: {}
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /udr/actuator/health/readiness
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            periodSeconds: 90
+            successThreshold: 2
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /udr/actuator/health/liveness
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            periodSeconds: 90
+            successThreshold: 1
+            failureThreshold: 2
+          startupProbe:
+            httpGet:
+              path: /udr/actuator/health/alb
+              port: 8080
+              scheme: HTTP
+            timeoutSeconds: 5
+            periodSeconds: 60
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: Always
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
       imagePullSecrets:
         - name: nexus-image-pull
+      securityContext: {}
+      schedulerName: default-scheduler
 ---
